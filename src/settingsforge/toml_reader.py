@@ -15,14 +15,16 @@ from settingsforge.exceptions import (
     ToolSectionNotFoundError,
 )
 
-TOP_LEVEL_KEYS: frozenset[str] = frozenset({
-    "name",
-    "version",
-    "description",
-    "requires-python",
-    "readme",
-    "authors",
-})
+TOP_LEVEL_KEYS: frozenset[str] = frozenset(
+    {
+        "name",
+        "version",
+        "description",
+        "requires-python",
+        "readme",
+        "authors",
+    }
+)
 
 
 def resolve_pyproject_path(path: Path | None = None) -> Path:
