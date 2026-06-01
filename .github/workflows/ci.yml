@@ -45,10 +45,6 @@ jobs:
         run: uv run ty check src/
 
   test:
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.13", "3.14-dev"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
@@ -58,7 +54,6 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
-          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: uv sync --frozen
