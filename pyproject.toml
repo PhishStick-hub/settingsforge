@@ -1,0 +1,56 @@
+[project]
+name = "settingsforge"
+version = "0.1.0"
+description = "Load and merge settings from pyproject.toml and .env files into validated Pydantic models"
+readme = "README.md"
+authors = [
+    { name = "Ivan Shcherbenko", email = "ivan_shcherbenko@outlook.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
+    "python-dotenv>=1.2.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.7,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.15",
+    "ty>=0.0.42",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH"]
+
+[tool.ty]
+
+[tool.ty.environment]
+python-version = "3.13"
+python = ".venv/bin/python3"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+version_variables = ["src/settingsforge/__init__.py:__version__"]
+changelog_file = "CHANGELOG.md"
+build_command = "uv build"
+upload_to_pypi = true
+upload_to_release = true
+commit_message = "chore(release): {version}"
+branch = "main"
+commit_parser = "conventional"
+major_on_zero = true
+tag_format = "v{version}"
