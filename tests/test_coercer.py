@@ -12,6 +12,11 @@ class Item(BaseModel):
     quantity: int
 
 
+class ItemWithList(BaseModel):
+    name: str
+    tags: list[str]
+
+
 class StringListModel(BaseModel):
     hosts: list[str]
 
@@ -32,8 +37,16 @@ class NestedModel(BaseModel):
     children: list[Item]
 
 
+class NestedModelWithListChild(BaseModel):
+    children: list[ItemWithList]
+
+
 class OptionalListModel(BaseModel):
     tags: list[str] | None = None
+
+
+class OptionalUnionListModel(BaseModel):
+    values: list[str] | int | None = None
 
 
 class SingleValueListModel(BaseModel):
@@ -47,10 +60,6 @@ class EmptyListModel(BaseModel):
 class NoCoercionModel(BaseModel):
     debug: bool
     port: int
-
-
-class CoercerTestBase:
-    pass
 
 
 class TestCoerceList:
@@ -99,6 +108,50 @@ class TestCoerceList:
         result = coerce_env_values(OptionalListModel, data)
         assert result == {}
 
+    def test_json_decode_falls_back_to_split(self) -> None:
+        data = {"hosts": "[bad json"}
+        result = coerce_env_values(StringListModel, data)
+        assert result == {"hosts": ["[bad json"]}
+
+    def test_optional_union_with_list_picks_list_member(self) -> None:
+        data = {"values": "a,b,c"}
+        result = coerce_env_values(OptionalUnionListModel, data)
+        assert result == {"values": ["a", "b", "c"]}
+
+
+class TestSetTupleFrozenset:
+    def test_set_of_strings(self) -> None:
+        class M(BaseModel):
+            tags: set[str]
+
+        data = {"tags": "a,b,c"}
+        result = coerce_env_values(M, data)
+        assert result == {"tags": ["a", "b", "c"]}
+
+    def test_frozenset_of_strings(self) -> None:
+        class M(BaseModel):
+            tags: frozenset[str]
+
+        data = {"tags": "a,b,c"}
+        result = coerce_env_values(M, data)
+        assert result == {"tags": ["a", "b", "c"]}
+
+    def test_tuple_variadic(self) -> None:
+        class M(BaseModel):
+            tags: tuple[str, ...]
+
+        data = {"tags": "a,b,c"}
+        result = coerce_env_values(M, data)
+        assert result == {"tags": ["a", "b", "c"]}
+
+    def test_tuple_fixed(self) -> None:
+        class M(BaseModel):
+            coords: tuple[int, int, int]
+
+        data = {"coords": "1,2,3"}
+        result = coerce_env_values(M, data)
+        assert result == {"coords": ["1", "2", "3"]}
+
 
 class TestCoerceDict:
     def test_dict_from_json(self) -> None:
@@ -120,7 +173,7 @@ class TestCoerceNested:
             ]
         }
 
-    def test_recurses_into_nested_basemodel(self) -> None:
+    def test_list_field_split(self) -> None:
         class Parent(BaseModel):
             child: list[str]
 
@@ -128,16 +181,28 @@ class TestCoerceNested:
         result = coerce_env_values(Parent, data)
         assert result == {"child": ["x", "y", "z"]}
 
+    def test_recurses_into_list_of_models_with_list_child(self) -> None:
+        data = {
+            "children": '[{"name": "a", "tags": "x,y,z"}, {"name": "b", "tags": "p,q"}]'
+        }
+        result = coerce_env_values(NestedModelWithListChild, data)
+        assert result == {
+            "children": [
+                {"name": "a", "tags": ["x", "y", "z"]},
+                {"name": "b", "tags": ["p", "q"]},
+            ]
+        }
+
     def test_recurses_into_nested_basemodel_with_dict(self) -> None:
         class Inner(BaseModel):
-            tags: list[str]
+            metadata: dict[str, int]
 
         class Outer(BaseModel):
             inner: Inner
 
-        data = {"inner": {"tags": "a,b,c"}}
+        data = {"inner": {"metadata": '{"a": 1, "b": 2}'}}
         result = coerce_env_values(Outer, data)
-        assert result == {"inner": {"tags": ["a", "b", "c"]}}
+        assert result == {"inner": {"metadata": {"a": 1, "b": 2}}}
 
 
 class TestPassthrough:
@@ -152,15 +217,33 @@ class TestPassthrough:
         assert result == {"hosts": ["a", "b"], "extra": "value"}
 
 
-class TestErrors:
-    def test_invalid_json_for_list(self) -> None:
-        with pytest.raises(SettingsValidationError, match="items"):
-            coerce_env_values(JsonListModel, {"items": "[bad json"})
+class TestCoerceOptOut:
+    def test_coerce_env_false_returns_copy(self) -> None:
+        data = {"hosts": "a,b,c"}
+        result = coerce_env_values(StringListModel, data, coerce_env=False)
+        assert result == {"hosts": "a,b,c"}
+        assert result is not data
 
+    def test_coerce_env_false_skips_list_split(self) -> None:
+        data = {"ports": "80,443"}
+        result = coerce_env_values(IntListModel, data, coerce_env=False)
+        assert result == {"ports": "80,443"}
+
+    def test_coerce_env_false_skips_dict_json(self) -> None:
+        data = {"features": '{"x": 1}'}
+        result = coerce_env_values(DictModel, data, coerce_env=False)
+        assert result == {"features": '{"x": 1}'}
+
+
+class TestErrors:
     def test_invalid_json_for_dict(self) -> None:
         with pytest.raises(SettingsValidationError, match="features"):
             coerce_env_values(DictModel, {"features": "{not valid"})
 
-    def test_invalid_json_for_nested_list(self) -> None:
+    def test_invalid_json_for_list_of_models(self) -> None:
         with pytest.raises(SettingsValidationError, match="children"):
             coerce_env_values(NestedModel, {"children": "[broken"})
+
+    def test_list_of_models_rejects_non_list_json(self) -> None:
+        with pytest.raises(SettingsValidationError, match="children"):
+            coerce_env_values(NestedModel, {"children": '{"not": "a list"}'})

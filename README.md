@@ -118,14 +118,33 @@ settings.features       # {"timeout": 30, "retries": 3}
 
 **Rules:**
 
-- **List-like fields** (`list`, `set`, `tuple`, `frozenset`): split on `,` by default, whitespace stripped, empty parts dropped. If the value starts with `[` or `{`, it is parsed as JSON instead.
+- **List-like fields** (`list`, `set`, `tuple`, `frozenset`): split on `,` by default, whitespace stripped, empty parts dropped. If the value starts with `[`, it is parsed as JSON instead; on invalid JSON the value is split as a fallback.
 - **Dict fields**: parsed as JSON.
 - **Per-element types** (e.g. `list[int]`, `list[bool]`): the list is split into strings, then Pydantic coerces each element during model validation.
-- **Optional list/dict fields** (`list[str] | None`) are detected.
+- **Optional list/dict fields** (`list[str] | None`) are detected. Multi-member unions like `list[str] | int | None` also detect the list member.
+- **Nested model lists** (`list[BaseModel]`, `set[BaseModel]`, `tuple[BaseModel, ...]`): the value must be a JSON list; each element is recursively coerced, so child `list` / `dict` fields inside the model are parsed the same way as top-level fields.
 - **Custom separator**: pass `list_separator=";"` to `load_settings` to split on a different character.
 - **Opt out**: pass `coerce_env=False` to keep raw string passthrough (the prior behavior).
 
-If a value cannot be parsed (e.g. malformed JSON for a dict field), a `SettingsValidationError` is raised with the offending field name.
+If a value cannot be parsed (e.g. malformed JSON for a dict field or a `list[BaseModel]` field), a `SettingsValidationError` is raised with the offending field name.
+
+```python
+class Server(BaseModel):
+    host: str
+    tags: list[str]
+
+class AppSettings(BaseModel):
+    servers: list[Server]
+```
+
+```bash
+SERVERS=[{"host": "a.example.com", "tags": "primary,public"}, {"host": "b.example.com", "tags": "backup"}]
+```
+
+```python
+settings.servers[0].host  # "a.example.com"
+settings.servers[0].tags  # ["primary", "public"]  (child list coerced too)
+```
 
 ## Custom Root Section
 
@@ -220,6 +239,27 @@ def load_settings[T: BaseModel](
 | `coerce_env` | `bool` | `True` | Parse list/dict string values via the model hints before validation |
 | `list_separator` | `str` | `","` | Separator for list-like fields when `coerce_env` is enabled |
 
+### `coerce_env_values()`
+
+```python
+def coerce_env_values(
+    model_class: type[BaseModel],
+    data: dict[str, Any],
+    *,
+    list_separator: str = ",",
+    coerce_env: bool = True,
+) -> dict[str, Any]
+```
+
+The same list/dict coercion that `load_settings` runs after merging, exposed as a standalone helper. Use it when you build the settings dict yourself (e.g. from a custom config source) and want the same string-to-typed-value behavior before handing the dict to Pydantic.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model_class` | `type[BaseModel]` | required | Pydantic model used to interpret each leaf |
+| `data` | `dict[str, Any]` | required | The dict to coerce (not mutated) |
+| `list_separator` | `str` | `","` | Separator for list-like fields |
+| `coerce_env` | `bool` | `True` | Set to `False` to return a shallow copy with no coercion |
+
 ### Exceptions
 
 | Exception | When |
@@ -277,7 +317,7 @@ pydsettingsforge/
 ├── .gitignore
 ├── src/
 │   └── pydsettingsforge/
-│       ├── __init__.py          # Public API: load_settings()
+│       ├── __init__.py          # Public API: load_settings(), coerce_env_values()
 │       ├── constants.py         # Default constants
 │       ├── coercer.py           # List/dict coercion from Pydantic hints
 │       ├── env_reader.py        # .env file parsing and nesting

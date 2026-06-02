@@ -33,6 +33,7 @@ __all__ = [
     "SettingsForgeError",
     "SettingsValidationError",
     "ToolSectionNotFoundError",
+    "coerce_env_values",
     "load_settings",
 ]
 
