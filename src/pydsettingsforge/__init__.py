@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 __version__ = "0.1.0"
 
+from pydsettingsforge.coercer import coerce_env_values
 from pydsettingsforge.constants import DEFAULT_ROOT_SECTION, ENV_NESTING_SEPARATOR
 from pydsettingsforge.env_reader import expand_nested_keys, read_env_files
 from pydsettingsforge.exceptions import (
@@ -32,6 +33,7 @@ __all__ = [
     "SettingsForgeError",
     "SettingsValidationError",
     "ToolSectionNotFoundError",
+    "coerce_env_values",
     "load_settings",
 ]
 
@@ -44,6 +46,8 @@ def load_settings[T: BaseModel](
     tool_section: str | None = None,
     root_section: str = DEFAULT_ROOT_SECTION,
     env_nesting_separator: str = ENV_NESTING_SEPARATOR,
+    coerce_env: bool = True,
+    list_separator: str = ",",
 ) -> T:
     """Load, merge, and validate application settings.
 
@@ -65,8 +69,15 @@ def load_settings[T: BaseModel](
         tool_section: Name of the [tool.<name>] section to read from pyproject.toml.
         root_section: Root TOML section to read (default: "project").
             When "project", only known metadata keys are included.
-            Custom sections include all their keys unfiltered.
+            Custom sections include all keys unfiltered.
         env_nesting_separator: Separator for nested keys in .env files (default: "__").
+        coerce_env: When True (default), string values for list, set, tuple, and
+            dict fields are parsed before Pydantic validation: list-like fields
+            are split on ``list_separator`` (or parsed as JSON if the value starts
+            with ``[`` or ``{``), and dict fields are parsed as JSON. Set to False
+            to keep raw string passthrough.
+        list_separator: Separator used to split string values for list-like
+            fields when ``coerce_env`` is True (default: ``,``).
 
     Returns:
         A validated instance of model_class.
@@ -91,5 +102,8 @@ def load_settings[T: BaseModel](
         env_settings = expand_nested_keys(flat_env, env_nesting_separator)
 
     merged = deep_merge(toml_settings, env_settings)
+
+    if coerce_env:
+        merged = coerce_env_values(model_class, merged, list_separator=list_separator)
 
     return validate_settings(model_class, merged)

@@ -167,3 +167,64 @@ class TestLoadSettings:
                 pyproject_path=pyproject,
                 root_section="missing",
             )
+
+    def test_env_list_coerced(self, tmp_project: Path) -> None:
+        pyproject = tmp_project / "pyproject.toml"
+        env = tmp_project / ".env"
+        env.write_text("ALLOWED_HOSTS=foo.com,bar.com,baz.com\n")
+
+        class Settings(BaseModel):
+            allowed_hosts: list[str]
+
+        result = load_settings(
+            Settings,
+            pyproject_path=pyproject,
+            env_files=[env],
+        )
+        assert result.allowed_hosts == ["foo.com", "bar.com", "baz.com"]
+
+    def test_env_list_coerced_with_inner_type_coercion(self, tmp_project: Path) -> None:
+        pyproject = tmp_project / "pyproject.toml"
+        env = tmp_project / ".env"
+        env.write_text("PORTS=80,443,5432\n")
+
+        class Settings(BaseModel):
+            ports: list[int]
+
+        result = load_settings(
+            Settings,
+            pyproject_path=pyproject,
+            env_files=[env],
+        )
+        assert result.ports == [80, 443, 5432]
+
+    def test_env_dict_coerced_from_json(self, tmp_project: Path) -> None:
+        pyproject = tmp_project / "pyproject.toml"
+        env = tmp_project / ".env"
+        env.write_text('FEATURES={"timeout": 30, "retries": 3}\n')
+
+        class Settings(BaseModel):
+            features: dict[str, int]
+
+        result = load_settings(
+            Settings,
+            pyproject_path=pyproject,
+            env_files=[env],
+        )
+        assert result.features == {"timeout": 30, "retries": 3}
+
+    def test_coerce_env_disabled_keeps_raw_string(self, tmp_project: Path) -> None:
+        pyproject = tmp_project / "pyproject.toml"
+        env = tmp_project / ".env"
+        env.write_text("ALLOWED_HOSTS=foo.com,bar.com\n")
+
+        class Settings(BaseModel):
+            allowed_hosts: list[str]
+
+        with pytest.raises(SettingsValidationError):
+            load_settings(
+                Settings,
+                pyproject_path=pyproject,
+                env_files=[env],
+                coerce_env=False,
+            )
