@@ -7,6 +7,7 @@ Load and merge application settings from `pyproject.toml` and `.env` files into 
 - Read settings from `pyproject.toml` (`[project]` table + optional `[tool.<name>]` section)
 - Read and merge multiple `.env` files with explicit priority ordering
 - Nested configuration via `__` separator in `.env` keys (e.g., `DATABASE__HOST=localhost`)
+- Automatic coercion of `.env` list and dict values from Pydantic model hints
 - `.env` values override `pyproject.toml` values
 - Validate merged settings against a user-provided Pydantic model
 - Clear, specific error messages for missing files, sections, and validation failures
@@ -90,6 +91,42 @@ Settings are merged in this order (lowest to highest priority):
 3. `.env` files (in the order provided in the `env_files` list)
 4. OS environment variables (if your model inherits from `pydantic_settings.BaseSettings`)
 
+## Lists and Dicts in .env
+
+`.env` values are always strings, but your Pydantic model knows the target type. pydsettingsforge uses those hints to parse list-like and dict fields automatically:
+
+```python
+class AppSettings(BaseModel):
+    allowed_hosts: list[str]
+    ports: list[int]
+    features: dict[str, int]
+```
+
+```bash
+# .env
+ALLOWED_HOSTS=api.example.com,web.example.com
+PORTS=80,443,5432
+FEATURES={"timeout": 30, "retries": 3}
+```
+
+```python
+settings = load_settings(AppSettings, env_files=[".env"])
+settings.allowed_hosts  # ["api.example.com", "web.example.com"]
+settings.ports          # [80, 443, 5432]  (Pydantic coerces each element)
+settings.features       # {"timeout": 30, "retries": 3}
+```
+
+**Rules:**
+
+- **List-like fields** (`list`, `set`, `tuple`, `frozenset`): split on `,` by default, whitespace stripped, empty parts dropped. If the value starts with `[` or `{`, it is parsed as JSON instead.
+- **Dict fields**: parsed as JSON.
+- **Per-element types** (e.g. `list[int]`, `list[bool]`): the list is split into strings, then Pydantic coerces each element during model validation.
+- **Optional list/dict fields** (`list[str] | None`) are detected.
+- **Custom separator**: pass `list_separator=";"` to `load_settings` to split on a different character.
+- **Opt out**: pass `coerce_env=False` to keep raw string passthrough (the prior behavior).
+
+If a value cannot be parsed (e.g. malformed JSON for a dict field), a `SettingsValidationError` is raised with the offending field name.
+
 ## Custom Root Section
 
 By default, pydsettingsforge reads from the `[project]` section (filtering to known metadata keys). You can specify a custom root section to read all keys from any TOML table:
@@ -167,6 +204,8 @@ def load_settings[T: BaseModel](
     tool_section: str | None = None,
     root_section: str = "project",
     env_nesting_separator: str = "__",
+    coerce_env: bool = True,
+    list_separator: str = ",",
 ) -> T
 ```
 
@@ -178,6 +217,8 @@ def load_settings[T: BaseModel](
 | `tool_section` | `str \| None` | `None` | `[tool.<name>]` section to read |
 | `root_section` | `str` | `"project"` | Root TOML section to read (custom sections include all keys) |
 | `env_nesting_separator` | `str` | `"__"` | Separator for nested `.env` keys |
+| `coerce_env` | `bool` | `True` | Parse list/dict string values via the model hints before validation |
+| `list_separator` | `str` | `","` | Separator for list-like fields when `coerce_env` is enabled |
 
 ### Exceptions
 
@@ -238,6 +279,7 @@ pydsettingsforge/
 │   └── pydsettingsforge/
 │       ├── __init__.py          # Public API: load_settings()
 │       ├── constants.py         # Default constants
+│       ├── coercer.py           # List/dict coercion from Pydantic hints
 │       ├── env_reader.py        # .env file parsing and nesting
 │       ├── exceptions.py        # Custom exceptions
 │       ├── merger.py            # Deep-merge dictionaries
@@ -245,6 +287,7 @@ pydsettingsforge/
 │       └── validator.py         # Pydantic validation
 └── tests/
     ├── conftest.py              # Shared fixtures
+    ├── test_coercer.py
     ├── test_env_reader.py
     ├── test_load_settings.py    # Integration tests
     ├── test_merger.py
