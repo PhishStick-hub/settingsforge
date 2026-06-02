@@ -59,7 +59,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Run tests with coverage
-        run: uv run pytest --cov=settingsforge --cov-report=xml
+        run: uv run pytest --cov=pydsettingsforge --cov-report=xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v6.0.1

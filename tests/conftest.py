@@ -1,4 +1,4 @@
-"""Shared test fixtures for settingsforge."""
+"""Shared test fixtures for pydsettingsforge."""
 
 from pathlib import Path
 

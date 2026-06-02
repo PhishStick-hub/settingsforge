@@ -1,4 +1,4 @@
-"""Default constants for settingsforge."""
+"""Default constants for pydsettingsforge."""
 
 DEFAULT_PYPROJECT_FILENAME: str = "pyproject.toml"
 

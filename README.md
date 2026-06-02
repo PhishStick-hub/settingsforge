@@ -1,4 +1,4 @@
-# settingsforge
+# pydsettingsforge
 
 Load and merge application settings from `pyproject.toml` and `.env` files into validated Pydantic models.
 
@@ -14,7 +14,7 @@ Load and merge application settings from `pyproject.toml` and `.env` files into 
 ## Installation
 
 ```bash
-uv add settingsforge
+uv add pydsettingsforge
 ```
 
 ## Quick Start
@@ -67,7 +67,7 @@ DATABASE__PORT=3306
 ### 4. Load settings
 
 ```python
-from settingsforge import load_settings
+from pydsettingsforge import load_settings
 from myapp.config import AppSettings
 
 settings = load_settings(
@@ -92,7 +92,7 @@ Settings are merged in this order (lowest to highest priority):
 
 ## Custom Root Section
 
-By default, settingsforge reads from the `[project]` section (filtering to known metadata keys). You can specify a custom root section to read all keys from any TOML table:
+By default, pydsettingsforge reads from the `[project]` section (filtering to known metadata keys). You can specify a custom root section to read all keys from any TOML table:
 
 ```toml
 [settings]
@@ -152,7 +152,7 @@ class FlexibleSettings(BaseModel):
 # Extra fields are accessible via settings.model_extra
 ```
 
-**Note**: This behavior is controlled by your Pydantic model configuration, not by settingsforge.
+**Note**: This behavior is controlled by your Pydantic model configuration, not by pydsettingsforge.
 
 ## API Reference
 
@@ -200,7 +200,7 @@ def load_settings[T: BaseModel](
 
 ```bash
 git clone <repo-url>
-cd settingsforge
+cd pydsettingsforge
 uv sync --all-groups
 ```
 
@@ -211,7 +211,7 @@ uv sync --all-groups
 uv run pytest
 
 # Run tests with coverage
-uv run pytest --cov=settingsforge
+uv run pytest --cov=pydsettingsforge
 
 # Lint
 uv run ruff check src/ tests/
@@ -229,13 +229,13 @@ uv run ruff check src/ tests/ && uv run ruff format --check src/ tests/ && uv ru
 ## Project Structure
 
 ```
-settingsforge/
+pydsettingsforge/
 ├── pyproject.toml
 ├── uv.lock
 ├── README.md
 ├── .gitignore
 ├── src/
-│   └── settingsforge/
+│   └── pydsettingsforge/
 │       ├── __init__.py          # Public API: load_settings()
 │       ├── constants.py         # Default constants
 │       ├── env_reader.py        # .env file parsing and nesting

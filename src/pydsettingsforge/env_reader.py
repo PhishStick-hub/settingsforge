@@ -5,8 +5,8 @@ from typing import Any
 
 from dotenv import dotenv_values
 
-from settingsforge.constants import ENV_NESTING_SEPARATOR
-from settingsforge.exceptions import EnvFileNotFoundError
+from pydsettingsforge.constants import ENV_NESTING_SEPARATOR
+from pydsettingsforge.exceptions import EnvFileNotFoundError
 
 
 def read_env_file(path: Path) -> dict[str, str]:

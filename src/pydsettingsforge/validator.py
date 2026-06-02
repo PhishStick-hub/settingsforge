@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from settingsforge.exceptions import SettingsValidationError
+from pydsettingsforge.exceptions import SettingsValidationError
 
 
 def validate_settings[T: BaseModel](

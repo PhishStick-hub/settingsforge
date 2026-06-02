@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from settingsforge.exceptions import (
+from pydsettingsforge.exceptions import (
     PyprojectNotFoundError,
     RootSectionNotFoundError,
     ToolSectionNotFoundError,
 )
-from settingsforge.toml_reader import (
+from pydsettingsforge.toml_reader import (
     extract_settings,
     read_pyproject,
     resolve_pyproject_path,

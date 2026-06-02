@@ -1,13 +1,13 @@
-# Contributing to settingsforge
+# Contributing to pydsettingsforge
 
-Thank you for your interest in contributing to settingsforge! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to pydsettingsforge! This document provides guidelines and instructions for contributing.
 
 ## Development Setup
 
 1. Clone the repository:
    ```bash
    git clone https://github.com/PhishStick-hub/settingsforge.git
-   cd settingsforge
+   cd pydsettingsforge
    ```
 
 2. Install dependencies with [uv](https://docs.astral.sh/uv/):
@@ -22,7 +22,7 @@ Thank you for your interest in contributing to settingsforge! This document prov
 
 4. Run tests with coverage:
    ```bash
-   uv run pytest --cov=settingsforge
+   uv run pytest --cov=pydsettingsforge
    ```
 
 ## Code Quality

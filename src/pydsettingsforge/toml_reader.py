@@ -4,12 +4,12 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from settingsforge.constants import (
+from pydsettingsforge.constants import (
     DEFAULT_PYPROJECT_FILENAME,
     DEFAULT_ROOT_SECTION,
     TOOL_SECTION_PREFIX,
 )
-from settingsforge.exceptions import (
+from pydsettingsforge.exceptions import (
     PyprojectNotFoundError,
     RootSectionNotFoundError,
     ToolSectionNotFoundError,

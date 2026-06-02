@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel
 
-from settingsforge import load_settings
-from settingsforge.exceptions import (
+from pydsettingsforge import load_settings
+from pydsettingsforge.exceptions import (
     EnvFileNotFoundError,
     PyprojectNotFoundError,
     RootSectionNotFoundError,

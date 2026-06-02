@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from settingsforge.env_reader import (
+from pydsettingsforge.env_reader import (
     expand_nested_keys,
     read_env_file,
     read_env_files,
 )
-from settingsforge.exceptions import EnvFileNotFoundError
+from pydsettingsforge.exceptions import EnvFileNotFoundError
 
 
 class TestReadEnvFile:

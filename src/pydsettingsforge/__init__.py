@@ -1,4 +1,4 @@
-"""settingsforge — Load and merge settings from pyproject.toml and .env files."""
+"""pydsettingsforge — Load and merge settings from pyproject.toml and .env files."""
 
 from pathlib import Path
 from typing import Any
@@ -7,9 +7,9 @@ from pydantic import BaseModel
 
 __version__ = "0.1.0"
 
-from settingsforge.constants import DEFAULT_ROOT_SECTION, ENV_NESTING_SEPARATOR
-from settingsforge.env_reader import expand_nested_keys, read_env_files
-from settingsforge.exceptions import (
+from pydsettingsforge.constants import DEFAULT_ROOT_SECTION, ENV_NESTING_SEPARATOR
+from pydsettingsforge.env_reader import expand_nested_keys, read_env_files
+from pydsettingsforge.exceptions import (
     EnvFileNotFoundError,
     PyprojectNotFoundError,
     RootSectionNotFoundError,
@@ -17,13 +17,13 @@ from settingsforge.exceptions import (
     SettingsValidationError,
     ToolSectionNotFoundError,
 )
-from settingsforge.merger import deep_merge
-from settingsforge.toml_reader import (
+from pydsettingsforge.merger import deep_merge
+from pydsettingsforge.toml_reader import (
     extract_settings,
     read_pyproject,
     resolve_pyproject_path,
 )
-from settingsforge.validator import validate_settings
+from pydsettingsforge.validator import validate_settings
 
 __all__ = [
     "EnvFileNotFoundError",

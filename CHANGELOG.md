@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial release of settingsforge
+- Initial release of pydsettingsforge
 - Load settings from `pyproject.toml` and `.env` files
 - Deep merge configuration from multiple sources
 - Validate settings with Pydantic models

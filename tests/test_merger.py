@@ -1,6 +1,6 @@
 """Tests for merger module."""
 
-from settingsforge.merger import deep_merge
+from pydsettingsforge.merger import deep_merge
 
 
 class TestDeepMerge:

@@ -3,8 +3,8 @@
 import pytest
 from pydantic import BaseModel
 
-from settingsforge.exceptions import SettingsValidationError
-from settingsforge.validator import validate_settings
+from pydsettingsforge.exceptions import SettingsValidationError
+from pydsettingsforge.validator import validate_settings
 
 
 class SampleSettings(BaseModel):

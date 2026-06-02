@@ -1,8 +1,8 @@
-"""Custom exceptions for settingsforge."""
+"""Custom exceptions for pydsettingsforge."""
 
 
 class SettingsForgeError(Exception):
-    """Base exception for all settingsforge errors."""
+    """Base exception for all pydsettingsforge errors."""
 
 
 class PyprojectNotFoundError(SettingsForgeError):

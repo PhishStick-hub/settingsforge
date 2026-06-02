@@ -1,5 +1,5 @@
 [project]
-name = "settingsforge"
+name = "pydsettingsforge"
 version = "0.1.0"
 description = "Load and merge settings from pyproject.toml and .env files into validated Pydantic models"
 readme = "README.md"
@@ -44,7 +44,7 @@ addopts = "-v --tb=short"
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
-version_variables = ["src/settingsforge/__init__.py:__version__"]
+version_variables = ["src/pydsettingsforge/__init__.py:__version__"]
 changelog_file = "CHANGELOG.md"
 build_command = "uv build"
 upload_to_pypi = true
