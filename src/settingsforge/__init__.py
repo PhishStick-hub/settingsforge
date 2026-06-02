@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 from settingsforge.constants import DEFAULT_ROOT_SECTION, ENV_NESTING_SEPARATOR
 from settingsforge.env_reader import expand_nested_keys, read_env_files
