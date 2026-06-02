@@ -21,12 +21,14 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Python Semantic Release
         id: release
         uses: python-semantic-release/python-semantic-release@v10.5.3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.RELEASE_TOKEN }}
+          build: false
 
   build:
     needs: release
@@ -60,8 +62,6 @@ jobs:
     if: needs.release.outputs.released == 'true'
     runs-on: ubuntu-latest
     environment: pypi
-    permissions:
-      id-token: write
 
     steps:
       - name: Download artifacts
@@ -72,3 +72,5 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}

@@ -46,8 +46,7 @@ addopts = "-v --tb=short"
 version_toml = ["pyproject.toml:project.version"]
 version_variables = ["src/pydsettingsforge/__init__.py:__version__"]
 changelog_file = "CHANGELOG.md"
-build_command = "uv build"
-upload_to_pypi = true
+upload_to_pypi = false
 upload_to_release = true
 commit_message = "chore(release): {version}"
 branch = "main"
