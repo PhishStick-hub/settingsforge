@@ -1,6 +1,6 @@
 [project]
 name = "pydsettingsforge"
-version = "0.1.0"
+version = "1.0.0"
 description = "Load and merge settings from pyproject.toml and .env files into validated Pydantic models"
 readme = "README.md"
 authors = [
