@@ -4,11 +4,12 @@ Load and merge application settings from `pyproject.toml` and `.env` files into 
 
 ## Features
 
-- Read settings from `pyproject.toml` (`[project]` table + optional `[tool.<name>]` section)
+- Read settings from any number of `pyproject.toml` sections via dot-separated paths (e.g. `"project"`, `"tool.myapp"`, `"autotests.settings"`)
+- Sections are deep-merged left-to-right, later sections override earlier ones
 - Read and merge multiple `.env` files with explicit priority ordering
 - Nested configuration via `__` separator in `.env` keys (e.g., `DATABASE__HOST=localhost`)
 - Automatic coercion of `.env` list and dict values from Pydantic model hints
-- `.env` values override `pyproject.toml` values
+- `.env` values override all `pyproject.toml` values
 - Validate merged settings against a user-provided Pydantic model
 - Clear, specific error messages for missing files, sections, and validation failures
 
@@ -73,7 +74,7 @@ from myapp.config import AppSettings
 
 settings = load_settings(
     AppSettings,
-    tool_section="myapp",
+    toml_sections=["project", "tool.myapp"],
     env_files=[".env", ".env.local"],
 )
 
@@ -86,10 +87,62 @@ print(settings.database.host)   # "db.production.com" (overridden by .env.local)
 
 Settings are merged in this order (lowest to highest priority):
 
-1. `pyproject.toml` root section fields (default: `[project]`)
-2. `pyproject.toml` `[tool.<name>]` section
-3. `.env` files (in the order provided in the `env_files` list)
-4. OS environment variables (if your model inherits from `pydantic_settings.BaseSettings`)
+1. `pyproject.toml` sections (in the order provided in the `toml_sections` list)
+2. `.env` files (in the order provided in the `env_files` list)
+3. OS environment variables (if your model inherits from `pydantic_settings.BaseSettings`)
+
+## TOML Sections
+
+The `toml_sections` parameter accepts dot-separated paths that walk into the parsed TOML structure:
+
+```toml
+[tool.myapp]
+debug = false
+
+[tool.myapp.database]
+host = "localhost"
+port = 5432
+
+[autotests.settings]
+browser = "chromium"
+workers = 4
+
+[autotests.settings.retry]
+max_attempts = 3
+backoff = "exponential"
+```
+
+```python
+from pydsettingsforge import load_settings
+
+class RetryConfig(BaseModel):
+    max_attempts: int
+    backoff: str
+
+class AutotestSettings(BaseModel):
+    browser: str
+    workers: int
+    retry: RetryConfig
+
+class AppSettings(BaseModel):
+    name: str
+    debug: bool = False
+    database: DatabaseConfig | None = None
+    autotests: AutotestSettings | None = None
+
+settings = load_settings(
+    AppSettings,
+    toml_sections=[
+        "project",                # [project] — filtered to PEP 621 keys
+        "tool.myapp",             # [tool.myapp] — all keys unfiltered
+        "tool.myapp.database",    # [tool.myapp.database] — nested sub-table
+        "autotests.settings",     # [autotests.settings] — custom nested section
+    ],
+    env_files=[".env"],
+)
+```
+
+Sections are deep-merged left-to-right. When the path is exactly `"project"`, only known PEP 621 metadata keys (`name`, `version`, `description`, `requires-python`, `readme`, `authors`) are included. All other sections include every key unfiltered.
 
 ## Lists and Dicts in .env
 
@@ -144,24 +197,6 @@ SERVERS=[{"host": "a.example.com", "tags": "primary,public"}, {"host": "b.exampl
 ```python
 settings.servers[0].host  # "a.example.com"
 settings.servers[0].tags  # ["primary", "public"]  (child list coerced too)
-```
-
-## Custom Root Section
-
-By default, pydsettingsforge reads from the `[project]` section (filtering to known metadata keys). You can specify a custom root section to read all keys from any TOML table:
-
-```toml
-[settings]
-host = "localhost"
-port = 8080
-debug = true
-```
-
-```python
-settings = load_settings(
-    ServerSettings,
-    root_section="settings",
-)
 ```
 
 ## Extra Fields
@@ -220,8 +255,7 @@ def load_settings[T: BaseModel](
     *,
     pyproject_path: Path | str | None = None,
     env_files: list[Path | str] | None = None,
-    tool_section: str | None = None,
-    root_section: str = "project",
+    toml_sections: list[str] | None = None,
     env_nesting_separator: str = "__",
     coerce_env: bool = True,
     list_separator: str = ",",
@@ -233,8 +267,7 @@ def load_settings[T: BaseModel](
 | `model_class` | `type[BaseModel]` | required | Pydantic model to validate against |
 | `pyproject_path` | `Path \| str \| None` | `./pyproject.toml` | Path to `pyproject.toml` |
 | `env_files` | `list[Path \| str] \| None` | `None` | Ordered list of `.env` files (later wins) |
-| `tool_section` | `str \| None` | `None` | `[tool.<name>]` section to read |
-| `root_section` | `str` | `"project"` | Root TOML section to read (custom sections include all keys) |
+| `toml_sections` | `list[str] \| None` | `["project"]` | Ordered list of dot-separated TOML section paths (later wins). When `"project"` is listed, only PEP 621 metadata keys are included. All other sections include every key unfiltered. |
 | `env_nesting_separator` | `str` | `"__"` | Separator for nested `.env` keys |
 | `coerce_env` | `bool` | `True` | Parse list/dict string values via the model hints before validation |
 | `list_separator` | `str` | `","` | Separator for list-like fields when `coerce_env` is enabled |
@@ -266,8 +299,7 @@ The same list/dict coercion that `load_settings` runs after merging, exposed as 
 |-----------|------|
 | `PyprojectNotFoundError` | `pyproject.toml` not found |
 | `EnvFileNotFoundError` | A specified `.env` file doesn't exist |
-| `RootSectionNotFoundError` | Root section is missing |
-| `ToolSectionNotFoundError` | `[tool.<name>]` section is missing |
+| `RootSectionNotFoundError` | A requested TOML section path is missing |
 | `SettingsValidationError` | Merged data fails Pydantic validation |
 
 ## Development

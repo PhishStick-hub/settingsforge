@@ -11,7 +11,6 @@ from pydsettingsforge.exceptions import (
     PyprojectNotFoundError,
     RootSectionNotFoundError,
     SettingsValidationError,
-    ToolSectionNotFoundError,
 )
 
 
@@ -34,7 +33,7 @@ class TestLoadSettings:
         result = load_settings(
             AppSettings,
             pyproject_path=pyproject,
-            tool_section="myapp",
+            toml_sections=["project", "tool.myapp"],
         )
         assert result.name == "myapp"
         assert result.version == "1.0.0"
@@ -47,7 +46,7 @@ class TestLoadSettings:
             AppSettings,
             pyproject_path=pyproject,
             env_files=[env_file],
-            tool_section="myapp",
+            toml_sections=["project", "tool.myapp"],
         )
         assert result.debug is True
         assert result.log_level == "debug"
@@ -60,7 +59,7 @@ class TestLoadSettings:
             AppSettings,
             pyproject_path=pyproject,
             env_files=[nested_env_file],
-            tool_section="myapp",
+            toml_sections=["project", "tool.myapp"],
         )
         assert result.database is not None
         assert result.database.host == "db.example.com"
@@ -77,7 +76,7 @@ class TestLoadSettings:
             AppSettings,
             pyproject_path=pyproject,
             env_files=[first_env, second_env],
-            tool_section="myapp",
+            toml_sections=["project", "tool.myapp"],
         )
         assert result.debug is True
         assert result.log_level == "error"
@@ -95,13 +94,13 @@ class TestLoadSettings:
                 env_files=[tmp_project / "missing.env"],
             )
 
-    def test_tool_section_not_found(self, tmp_project: Path) -> None:
+    def test_section_not_found(self, tmp_project: Path) -> None:
         pyproject = tmp_project / "pyproject.toml"
-        with pytest.raises(ToolSectionNotFoundError):
+        with pytest.raises(RootSectionNotFoundError):
             load_settings(
                 AppSettings,
                 pyproject_path=pyproject,
-                tool_section="nonexistent",
+                toml_sections=["tool.nonexistent"],
             )
 
     def test_validation_error(self, tmp_project: Path) -> None:
@@ -129,7 +128,7 @@ class TestLoadSettings:
             AppSettings,
             pyproject_path=str(tmp_project / "pyproject.toml"),
             env_files=[str(env_file)],
-            tool_section="myapp",
+            toml_sections=["project", "tool.myapp"],
         )
         assert result.name == "myapp"
         assert result.debug is True
@@ -148,7 +147,7 @@ class TestLoadSettings:
         result = load_settings(
             ServerSettings,
             pyproject_path=pyproject,
-            root_section="settings",
+            toml_sections=["settings"],
         )
         assert result.host == "localhost"
         assert result.port == 8080
@@ -165,8 +164,59 @@ class TestLoadSettings:
             load_settings(
                 MinimalSettings,
                 pyproject_path=pyproject,
-                root_section="missing",
+                toml_sections=["missing"],
             )
+
+    def test_nested_root_section(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            '[autotests.settings]\nbrowser = "chromium"\nworkers = 4\ntimeout = 30.0\n'
+        )
+
+        class AutotestSettings(BaseModel):
+            browser: str
+            workers: int
+            timeout: float
+
+        result = load_settings(
+            AutotestSettings,
+            pyproject_path=pyproject,
+            toml_sections=["autotests.settings"],
+        )
+        assert result.browser == "chromium"
+        assert result.workers == 4
+        assert result.timeout == 30.0
+
+    def test_nested_root_section_with_sub_model(self, tmp_path: Path) -> None:
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            "[autotests.settings]\n"
+            'browser = "chromium"\n'
+            "workers = 4\n"
+            "\n"
+            "[autotests.settings.retry]\n"
+            "max_attempts = 3\n"
+            'backoff = "exponential"\n'
+        )
+
+        class RetryConfig(BaseModel):
+            max_attempts: int
+            backoff: str
+
+        class AutotestSettings(BaseModel):
+            browser: str
+            workers: int
+            retry: RetryConfig
+
+        result = load_settings(
+            AutotestSettings,
+            pyproject_path=pyproject,
+            toml_sections=["autotests.settings"],
+        )
+        assert result.browser == "chromium"
+        assert result.workers == 4
+        assert result.retry.max_attempts == 3
+        assert result.retry.backoff == "exponential"
 
     def test_env_list_coerced(self, tmp_project: Path) -> None:
         pyproject = tmp_project / "pyproject.toml"
