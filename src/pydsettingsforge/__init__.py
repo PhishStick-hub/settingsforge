@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 from pydsettingsforge.coercer import coerce_env_values
 from pydsettingsforge.constants import DEFAULT_TOML_SECTIONS, ENV_NESTING_SEPARATOR
