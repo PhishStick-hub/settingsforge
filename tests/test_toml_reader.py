@@ -135,6 +135,11 @@ class TestExtractSettings:
         with pytest.raises(RootSectionNotFoundError):
             extract_settings(data, toml_sections=["autotests.settings"])
 
+    def test_nested_root_section_final_value_not_dict(self) -> None:
+        data = {"tool": {"myapp": {"setting": "scalar"}}}
+        with pytest.raises(RootSectionNotFoundError):
+            extract_settings(data, toml_sections=["tool.myapp.setting"])
+
     def test_nested_root_section_with_tool_section(self) -> None:
         data = {
             "autotests": {"settings": {"browser": "chromium", "workers": 2}},
