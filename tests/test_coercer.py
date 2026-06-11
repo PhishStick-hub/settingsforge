@@ -216,6 +216,29 @@ class TestPassthrough:
         result = coerce_env_values(StringListModel, data)
         assert result == {"hosts": ["a", "b"], "extra": "value"}
 
+    def test_list_field_already_list_passthrough(self) -> None:
+        data = {"hosts": ["a", "b"]}
+        result = coerce_env_values(StringListModel, data)
+        assert result == {"hosts": ["a", "b"]}
+
+    def test_dict_field_already_dict_passthrough(self) -> None:
+        data = {"features": {"a": 1}}
+        result = coerce_env_values(DictModel, data)
+        assert result == {"features": {"a": 1}}
+
+    def test_list_of_models_already_list_passthrough(self) -> None:
+        data = {"children": [{"name": "x", "quantity": 1}]}
+        result = coerce_env_values(NestedModel, data)
+        assert result == {"children": [{"name": "x", "quantity": 1}]}
+
+    def test_ambiguous_optional_union_passthrough(self) -> None:
+        class AmbiguousOptModel(BaseModel):
+            mode: int | str | None = None
+
+        data = {"mode": "auto"}
+        result = coerce_env_values(AmbiguousOptModel, data)
+        assert result == {"mode": "auto"}
+
 
 class TestCoerceOptOut:
     def test_coerce_env_false_returns_copy(self) -> None:
