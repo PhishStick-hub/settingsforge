@@ -4,16 +4,12 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from pydsettingsforge.constants import (
-    DEFAULT_PYPROJECT_FILENAME,
-    DEFAULT_ROOT_SECTION,
-    TOOL_SECTION_PREFIX,
-)
+from pydsettingsforge.constants import DEFAULT_ROOT_SECTION, DEFAULT_TOML_SECTIONS
 from pydsettingsforge.exceptions import (
     PyprojectNotFoundError,
     RootSectionNotFoundError,
-    ToolSectionNotFoundError,
 )
+from pydsettingsforge.merger import deep_merge
 
 TOP_LEVEL_KEYS: frozenset[str] = frozenset(
     {
@@ -33,7 +29,7 @@ def resolve_pyproject_path(path: Path | None = None) -> Path:
     If no path is given, looks in the current working directory.
     """
     if path is None:
-        return Path.cwd() / DEFAULT_PYPROJECT_FILENAME
+        return Path.cwd() / "pyproject.toml"
     return path.resolve()
 
 
@@ -46,33 +42,52 @@ def read_pyproject(path: Path) -> dict[str, Any]:
         return tomllib.load(f)
 
 
+def _resolve_nested_key(data: dict[str, Any], path: str) -> dict[str, Any]:
+    """Walk a dotted path into a nested dict structure.
+
+    ``path`` is a dot-separated TOML section path such as ``"project"``,
+    ``"tool.myapp"``, or ``"autotests.settings"``.
+    Raises RootSectionNotFoundError if any segment is missing or not a dict.
+    """
+    parts = path.split(".")
+    current: Any = data
+    for part in parts:
+        if not isinstance(current, dict) or part not in current:
+            raise RootSectionNotFoundError(path)
+        current = current[part]
+    if not isinstance(current, dict):
+        raise RootSectionNotFoundError(path)
+    return current
+
+
 def extract_settings(
     pyproject_data: dict[str, Any],
-    tool_section: str | None = None,
-    root_section: str = DEFAULT_ROOT_SECTION,
+    toml_sections: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Extract settings from parsed pyproject.toml data.
+    """Extract settings from one or more pyproject.toml sections.
 
-    Returns fields from the root section merged with an optional [tool.<name>] section.
-    When root_section is "project" (default), only known metadata keys are included.
-    For custom root sections, all keys are included without filtering.
+    Each entry in ``toml_sections`` is a dot-separated path into the parsed
+    TOML data (e.g. ``"project"``, ``"tool.myapp"``,
+    ``"autotests.settings"``).  Sections are merged left-to-right — later
+    sections override earlier ones on key conflict.
+
+    When ``toml_sections`` is ``None``, defaults to ``["project"]``.
+
+    When the section path is exactly ``"project"``, only known PEP 621
+    metadata keys (``name``, ``version``, ``description``,
+    ``requires-python``, ``readme``, ``authors``) are included.
+    All other sections include every key unfiltered.
     """
-    if root_section not in pyproject_data:
-        raise RootSectionNotFoundError(root_section)
+    if toml_sections is None:
+        toml_sections = DEFAULT_TOML_SECTIONS
 
-    root_table: dict[str, Any] = pyproject_data[root_section]
+    result: dict[str, Any] = {}
+    for section in toml_sections:
+        section_data = _resolve_nested_key(pyproject_data, section)
+        if section == DEFAULT_ROOT_SECTION:
+            section_data = {
+                k: v for k, v in section_data.items() if k in TOP_LEVEL_KEYS
+            }
+        result = deep_merge(result, section_data)
 
-    if root_section == DEFAULT_ROOT_SECTION:
-        top_level = {k: v for k, v in root_table.items() if k in TOP_LEVEL_KEYS}
-    else:
-        top_level = dict(root_table)
-
-    if tool_section is None:
-        return top_level
-
-    tool_table = pyproject_data.get(TOOL_SECTION_PREFIX, {})
-    if tool_section not in tool_table:
-        raise ToolSectionNotFoundError(tool_section)
-
-    section_data = tool_table[tool_section]
-    return {**top_level, **section_data}
+    return result

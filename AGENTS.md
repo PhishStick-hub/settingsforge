@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## What this repo is
-- Small Python 3.13+ library (`pydsettingsforge`, currently v0.1.0) — load/merge settings from `pyproject.toml` and `.env` files into a user-supplied Pydantic model.
+- Small Python 3.13+ library (`pydsettingsforge`, currently v1.0.0) — load/merge settings from `pyproject.toml` and `.env` files into a user-supplied Pydantic model.
 - Single flat package at `src/pydsettingsforge/`. No monorepo, no sub-packages, no `examples/` or `docs/` directory.
 - Package ships type info (`src/pydsettingsforge/py.typed` is present, PEP 561).
 
@@ -30,10 +30,10 @@ CI runs `lint`, `typecheck`, `test` as three independent jobs — that order is 
 
 - **`ty` only typechecks `src/`, not `tests/`.** `tests/` is intentionally untyped. Do not add tests to the typecheck command.
 - **`.env` keys are lowercased** by `env_reader.expand_nested_keys` (`src/pydsettingsforge/env_reader.py:48`). Pydantic field names must match the lowercased form, e.g. `DATABASE__HOST` → `database.host`.
-- **Default root section filters keys.** When `root_section="project"` (the default), `toml_reader.extract_settings` only keeps the metadata keys in `TOP_LEVEL_KEYS` (`src/pydsettingsforge/toml_reader.py:18`: `name`, `version`, `description`, `requires-python`, `readme`, `authors`). Custom root sections include all keys unfiltered.
+- **Default sections filter keys.** When `toml_sections` is `None` (defaults to `["project"]`) or when `"project"` is explicitly listed, `toml_reader.extract_settings` only keeps the metadata keys in `TOP_LEVEL_KEYS` (`src/pydsettingsforge/toml_reader.py:18`: `name`, `version`, `description`, `requires-python`, `readme`, `authors`). All other section paths include every key unfiltered.
 - **`deep_merge` replaces lists** instead of concatenating (`src/pydsettingsforge/merger.py`). Don't expect `[1,2] + override [3]` → `[1,2,3]`.
 - **`__version__` lives in `src/pydsettingsforge/__init__.py:8`** and MUST match `pyproject.toml:project.version`. Both are updated by `python-semantic-release` — do not bump them by hand.
-- **Override priority** (lowest → highest): `[project]` filtered fields → `[tool.<name>]` → `.env` files in the order given (later wins) → OS env (only if the Pydantic model inherits from `pydantic_settings.BaseSettings`).
+- **Override priority** (lowest → highest): `toml_sections` list entries in order (later wins) → `.env` files in the order given (later wins) → OS env (only if the Pydantic model inherits from `pydantic_settings.BaseSettings`).
 - **Public API surface is narrow.** `load_settings`, `coerce_env_values`, and the exception classes re-exported in `src/pydsettingsforge/__init__.py:29-38` are public. `env_reader`, `toml_reader`, `merger`, `validator`, and `coercer` (other than the re-exported `coerce_env_values`) are internal — don't import from them in user-facing docs.
 - **Env-string coercion is opt-in by default.** `load_settings` runs `coerce_env_values` (`src/pydsettingsforge/coercer.py`) after merging unless `coerce_env=False`. The coercer splits `list`/`set`/`tuple`/`frozenset` strings on `list_separator` (default `,`) or parses JSON if the value starts with `[`; dict strings are always JSON-parsed; `list[BaseModel]` / `set[BaseModel]` / `tuple[BaseModel, ...]` are JSON-parsed and each element is recursively coerced. JSON parse failure on a list-like field falls back to splitting; JSON parse failure on a dict or `list[BaseModel]` field raises `SettingsValidationError`.
 
